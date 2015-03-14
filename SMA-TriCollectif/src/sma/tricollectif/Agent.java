@@ -2,7 +2,7 @@
 package sma.tricollectif;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.LinkedList;
 import util.Coordonnees;
 
 /**
@@ -12,34 +12,71 @@ import util.Coordonnees;
 public class Agent extends Thread {
     
     private String nom;
-    
     private Coordonnees position; // X ordonnée / Y abcisse en commencant par 0 en haut à gauche
     private Grille grille; //grille
     
-    private ArrayList<Agent> listAgents;
-   
+    // Parametres
+    private final int i; // nb mouvements aleatoires
+    private final int t; // taille memoire
+    private final float kp;
+    private final float km;
     
-    public Agent(Coordonnees p,Grille g, Coordonnees pf, String n){
+    // Etats
+    private Objet prise;
+    
+    // Perception
+    private LinkedList<Character> memoire;
+    
+    public Agent(String n, Grille g, Coordonnees p, int i, int t, float kp, float km){
         nom = n;
         position = p;
         grille = g;
+        this.i = i;
+        this.t = t;
+        this.kp = kp;
+        this.km = km;
+        this.memoire = new LinkedList<Character>();
+        prise = null;
     }
     
-    // TODO gestion de gains et de coûts
-    // 
-    // Nb couts mini des agents ayant atteint la position 
-   
+    
     public void run(){
-        while (! grille.isTousSatisfait()) { //tant que le tri n'est pas satisfaisant on boucle 
-            
+        while (true) { //tant que le tri n'est pas satisfaisant on boucle 
             try {
+                
                 Thread.sleep(100);
             } catch (InterruptedException ex) {
                 System.out.println(ex.getMessage());
             }
         }
     }//run()
+    
+    /**
+     * Perceptions
+     */
 
+    public void perception() {
+        viewSurrounding();
+    }
+    
+    /**
+     * Enregistre en memoire les Objets alentours
+     */
+    private void viewSurrounding() {
+        ArrayList<Coordonnees> coords = getSurroundingCoords();
+        for (Coordonnees c : coords) {
+            Object o = grille.getCase(c);
+            if (o.getClass().getName().equals("Objet")) {
+                memoire.addFirst(((Objet) o).getType());
+            } else {
+                memoire.addFirst(null);
+            }
+        }
+        // suppression des donnees en trops
+        while (memoire.size() > t) {
+            memoire.removeLast();
+        }
+    }//viewSurrounding()
     
     /**
      * Etats
@@ -49,6 +86,32 @@ public class Agent extends Thread {
         return false;
     }
     
+    /**
+     * Actions
+     */
+    
+    public void actions() {
+        if (prise == null) {// prise
+            
+        } else {// depot
+            
+        }
+        
+    }
+    
+    
+    /**
+     * Utils
+     */
+    
+    public ArrayList<Coordonnees> getSurroundingCoords() {
+        ArrayList<Coordonnees> coords = new ArrayList<Coordonnees>();
+        coords.add(new Coordonnees(position.getX()-1,position.getY()));//Le haut
+        coords.add(new Coordonnees(position.getX()+1,position.getY()));//Le bas
+        coords.add(new Coordonnees(position.getX(),position.getY()-1));//La gauche
+        coords.add(new Coordonnees(position.getX(),position.getY()+1));//La droite
+        return coords;
+    }
     
     public void bougerAleatoirement(){
         Coordonnees newPosition = new Coordonnees(position.getX(),position.getY());
@@ -104,10 +167,6 @@ public class Agent extends Thread {
         return grille;
     }
 
-    public ArrayList<Agent> getListAgents() {
-        return listAgents;
-    }
-    
     public String getNom(){
         return nom;
     }
@@ -123,10 +182,5 @@ public class Agent extends Thread {
     public void setNom(String n){
         this.nom = n;
     }
-
-    public void setListAgents(ArrayList<Agent> listAgents) {
-        this.listAgents = listAgents;
-    }
-
     
 }
