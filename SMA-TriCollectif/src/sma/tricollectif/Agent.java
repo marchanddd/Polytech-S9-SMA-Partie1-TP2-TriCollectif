@@ -2,6 +2,7 @@
 package sma.tricollectif;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import util.Coordonnees;
 
@@ -22,6 +23,7 @@ public class Agent extends Thread {
     private final float km;
     
     // Etats
+    private int iCurrent; // nb de mouvement courrent
     private Objet prise;
     
     // Perception
@@ -37,13 +39,15 @@ public class Agent extends Thread {
         this.km = km;
         this.memoire = new LinkedList<Character>();
         prise = null;
+        this.iCurrent = 0;
     }
     
     
     public void run(){
         while (true) { //tant que le tri n'est pas satisfaisant on boucle 
             try {
-                
+                perception();
+                action();
                 Thread.sleep(100);
             } catch (InterruptedException ex) {
                 System.out.println(ex.getMessage());
@@ -90,14 +94,44 @@ public class Agent extends Thread {
      * Actions
      */
     
-    public void actions() {
-        if (prise == null) {// prise
-            
+    public void action() {
+        if (prise == null) {// recherche
+            if (iCurrent < i) {
+                bougerAleatoirement();
+            } else {
+                prise();
+                if (prise == null) { // pas pris
+                    bougerAleatoirement();
+                }
+            }
         } else {// depot
             
         }
         
-    }
+    }//action()
+    
+    public void prise() {
+        // count
+        HashMap<Objet, Integer> countersObjet = new HashMap<Objet, Integer>();
+        for (Object o : memoire) {
+            if (o.getClass().getName().equals("Objet")) {
+                Objet objet = (Objet) o;
+                if (countersObjet.containsKey(objet)) {
+                    countersObjet.put(objet, countersObjet.get(objet) + 1);
+                } else {
+                    countersObjet.put(objet, 1);
+                }
+            }
+        }
+        // prise
+        ArrayList<Coordonnees> surrounding = getSurroundingCoords();
+        for (Coordonnees c : surrounding) {
+            Object o = grille.getCase(c);
+            if (o.getClass().getName().equals("Objet")) {
+                double PPrise = Math.pow(kp/(kp+((float) (countersObjet.get((Objet) o)/t))), 2); //proba
+            }
+        }
+    }//prise()
     
     
     /**
