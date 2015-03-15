@@ -10,34 +10,34 @@ import util.Coordonnees;
 public class Grille {
     
     private Object[][] grille; // Contenant soit Objet, Agent ou null
-    private ArrayList<Agent> listAgents;
+//    private ArrayList<Agent> listAgents;
     
     // Etat
     private boolean tousSatisait;
 
-    public Grille(int taille, ArrayList<Agent> la){
+    public Grille(int taille) {
         // Grille
-        grille = new Agent[taille][taille];
-        for(int i=0;i<taille;i++){
-            for(int j=0;j<taille;j++){
-                grille[i][j]=null;
+        grille = new Object[taille][taille];
+        for(int i = 0; i < taille; i++){
+            for(int j = 0; j < taille; j++){
+                grille[i][j] = null;
             }
         }
-        
-        // Liste des agents
-        if(la != null){
-            listAgents = la;
-            for(Agent a : la){
-                if (grille[a.getPosition().getX()][a.getPosition().getY()] == null) {
-                    grille[a.getPosition().getX()][a.getPosition().getY()] = a;
-                }
-            }
-        }else{
-            listAgents = new ArrayList<Agent>();
-        }
-        
-        
-    }//Grille()
+//        listAgents = new ArrayList<Agent>();
+    }
+    
+//    public Grille(int taille, ArrayList<Agent> la){
+//        this(taille);
+//        // Liste des agents
+//        if(la != null){
+//            listAgents = la;
+//            for(Agent a : la){
+//                if (grille[a.getPosition().getX()][a.getPosition().getY()] == null) {
+//                    grille[a.getPosition().getX()][a.getPosition().getY()] = a;
+//                }
+//            }
+//        }
+//    }//Grille()
     
     
     /**
@@ -50,7 +50,7 @@ public class Grille {
         // Verifications
         if (isLibre(cible)) {
             // Modification de la position
-            synchronized(grille) {
+            synchronized(this) {
                 grille[a.getPosition().getX()][a.getPosition().getY()] = null;
                 grille[cible.getX()][cible.getY()] = a;
             }
@@ -75,18 +75,42 @@ public class Grille {
 //    }
     
     public boolean isLibre(Coordonnees c){
-        synchronized(grille) {
+        synchronized(this) {
             return(grille[c.getX()][c.getY()] == null);
         }
     }
     
     public Object getCase(Coordonnees c){
-        synchronized(grille) {
+        synchronized(this) {
             if (c.getX() < 0 || c.getX() >= grille.length ||
-                    c.getY() < 0 || c.getY() > grille[0].length) {
+                    c.getY() < 0 || c.getY() >= grille[0].length) {
                 return null;
             }
             return grille[c.getX()][c.getY()];
+        }
+    }
+    
+    public void removeObjet(Coordonnees c) throws Exception {
+        synchronized(this) {
+            if (! grille[c.getX()][c.getY()].getClass().getName().equals("sma.tricollectif.Objet"))
+                throw new Exception("Aucun objet");
+            grille[c.getX()][c.getY()] = null;
+        }
+    }
+    
+    public void putObjet(Coordonnees c, Objet o) throws Exception {
+        synchronized(this) {
+            if (grille[c.getX()][c.getY()] != null)
+                throw new Exception("Objet présent");
+            grille[c.getX()][c.getY()] = o;
+        }
+    }
+    
+    public void putAgent(Agent a) throws Exception {
+        synchronized(this) {
+            if (grille[a.getPosition().getX()][a.getPosition().getY()] != null)
+                throw new Exception("Objet présent");
+            grille[a.getPosition().getX()][a.getPosition().getY()] = a;
         }
     }
      
@@ -95,16 +119,18 @@ public class Grille {
         
         for(int i = 0; i < grille.length; i++){
             for(int j = 0; j < grille[i].length; j++){
-                synchronized(grille) {
+                synchronized(this) {
                     ligne += "[";
                     if(grille[i][j] != null){
-                        if (grille[i][j].getClass().getName().equals("Agent")) {
+                        if (grille[i][j].getClass().getName().equals("sma.tricollectif.Agent")) {
                             ligne += ((Agent) grille[i][j]).getNom();
-                        } else if (grille[i][j].getClass().getName().equals("Objet")) {
+                        } else if (grille[i][j].getClass().getName().equals("sma.tricollectif.Objet")) {
                             ligne += ((Objet) grille[i][j]).getType();
                         }
+                    } else {
+                        ligne += " ";
                     }
-                    ligne+=" ]";
+                    ligne += "]";
                 }
             }
             System.out.println(ligne);
@@ -114,13 +140,18 @@ public class Grille {
         System.out.println("_____________________________________");
     }//print()
     
+    public boolean isInBounds(Coordonnees c) {
+        synchronized(this) {
+            return (c.getX() >= 0 && c.getX() < grille.length &&
+                c.getY() >= 0 && c.getY() < grille[0].length);
+        }
+    }
+    
     public int getTaille(){
         return grille.length;
     }
     
-    public ArrayList<Agent> getListAgents(){
-        return listAgents;
-    }
-    
-    
+//    public ArrayList<Agent> getListAgents(){
+//        return listAgents;
+//    }
 }

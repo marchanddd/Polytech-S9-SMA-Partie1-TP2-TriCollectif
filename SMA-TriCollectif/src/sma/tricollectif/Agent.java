@@ -3,7 +3,10 @@ package sma.tricollectif;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import util.Coordonnees;
 
 /**
@@ -48,9 +51,8 @@ public class Agent extends Thread {
             try {
                 perception();
                 action();
-                Thread.sleep(100);
-            } catch (InterruptedException ex) {
-                System.out.println(ex.getMessage());
+            } catch (Exception ex) {
+                Logger.getLogger(Agent.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
     }//run()
@@ -70,7 +72,7 @@ public class Agent extends Thread {
         ArrayList<Coordonnees> coords = getSurroundingCoords();
         for (Coordonnees c : coords) {
             Object o = grille.getCase(c);
-            if (o.getClass().getName().equals("Objet")) {
+            if (o != null && o.getClass().getName().equals("sma.tricollectif.Objet")) {
                 memoire.addFirst(((Objet) o).getType());
             } else {
                 memoire.addFirst(null);
@@ -94,10 +96,11 @@ public class Agent extends Thread {
      * Actions
      */
     
-    public void action() {
+    public void action() throws Exception {
         if (prise == null) {// recherche
             if (iCurrent < i) {
                 bougerAleatoirement();
+                iCurrent++;
             } else {
                 prise();
                 if (prise == null) { // pas pris
@@ -105,34 +108,79 @@ public class Agent extends Thread {
                 }
             }
         } else {// depot
-            
+            pose();
+            if (prise != null) { // pas pose
+                bougerAleatoirement();
+            }
         }
         
     }//action()
     
-    public void prise() {
+    public void prise() throws Exception {
+        if (prise != null) throw new Exception("L'agent à déjà une prise");
         // count
-        HashMap<Objet, Integer> countersObjet = new HashMap<Objet, Integer>();
-        for (Object o : memoire) {
-            if (o.getClass().getName().equals("Objet")) {
-                Objet objet = (Objet) o;
-                if (countersObjet.containsKey(objet)) {
-                    countersObjet.put(objet, countersObjet.get(objet) + 1);
+        HashMap<Character, Integer> countersObjet = new HashMap<Character, Integer>();
+        for (Character type : memoire) {
+            if (type != null) {
+                if (countersObjet.containsKey(type)) {
+                    countersObjet.put(type, countersObjet.get(type) + 1);
                 } else {
-                    countersObjet.put(objet, 1);
+                    countersObjet.put(type, 1);
                 }
             }
         }
         // prise
         ArrayList<Coordonnees> surrounding = getSurroundingCoords();
-        for (Coordonnees c : surrounding) {
-            Object o = grille.getCase(c);
-            if (o.getClass().getName().equals("Objet")) {
-                double PPrise = Math.pow(kp/(kp+((float) (countersObjet.get((Objet) o)/t))), 2); //proba
+        synchronized(grille) {
+            for (Coordonnees c : surrounding) {
+                Object o = grille.getCase(c);
+                if (o != null && o.getClass().getName().equals("sma.tricollectif.Objet")) {
+                    Objet obj = (Objet) o;
+                    if (countersObjet.containsKey(obj.getType())) {
+                        //proba
+                        double PPrise = Math.pow(kp/(kp+(countersObjet.get(obj.getType())/(float)t)), 2); 
+                        if (Math.random() <= PPrise) {
+                            // prise
+                            grille.removeObjet(c);
+                            prise = obj;
+                            return;
+                        }
+                    }
+                }
             }
         }
     }//prise()
     
+    public void pose() throws Exception {
+        // count
+        int counterObjet = 0;
+        ArrayList<Coordonnees> surrounding = getSurroundingCoords();
+        ArrayList<Coordonnees> casesPossible = new ArrayList<Coordonnees>();
+        synchronized(grille) {
+            for (Coordonnees c : surrounding) {
+                Object o = grille.getCase(c);
+                if (o == null) {
+                    casesPossible.add(c);
+                } else if (o.getClass().getName().equals("sma.tricollectif.Objet") &&
+                        prise.equals((Objet) o)) {
+                    counterObjet++;
+                }
+            }
+            // pose
+            if (counterObjet > 0) {
+                for (Coordonnees c : casesPossible) {
+                    //proba
+                    double PPose = Math.pow(km/(km+((float) counterObjet)/t), 2); 
+                    if (Math.random() <= PPose) {
+                        // prise
+                        grille.putObjet(c, prise);
+                        prise = null;
+                        return;
+                    }
+                }
+            }
+        }
+    }//pose()
     
     /**
      * Utils
@@ -144,6 +192,12 @@ public class Agent extends Thread {
         coords.add(new Coordonnees(position.getX()+1,position.getY()));//Le bas
         coords.add(new Coordonnees(position.getX(),position.getY()-1));//La gauche
         coords.add(new Coordonnees(position.getX(),position.getY()+1));//La droite
+        Iterator<Coordonnees> itC = coords.iterator();
+        while (itC.hasNext()) {
+            if (! grille.isInBounds(itC.next())) {
+                itC.remove();
+            }
+        }
         return coords;
     }
     
